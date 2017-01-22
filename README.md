@@ -3,7 +3,7 @@
 
 This Racket package contains a DrRacket tool that displays a list of the unwritten parts of a program, as determined by the macros that implement those unwritten parts.
 
-In particular, when Check Syntax finds a syntax object during expansion with the `'goal` syntax property, then it considers that syntax object to be an unsolved goal. After expansion, a panel pops up with a list of goals to be completed.
+In particular, when Check Syntax finds a syntax object during expansion with the `'goal` syntax property, then it considers that syntax object to be an unsolved goal. After expansion, a panel pops up with a list of goals to be completed. If the syntax object additionally contains a `'goal-summary' property, then the summary is used in the list and the goal in the details view.
 
 This tool is intended for use with cooperating languages, especially statically typed languages and proof assistants. It is inspired by the hole list in the [Agda](http://wiki.portal.chalmers.se/agda/pmwiki.php) mode for Emacs.
 

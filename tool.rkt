@@ -1,5 +1,5 @@
 #lang racket/gui
-(require drracket/tool framework racket/runtime-path data/interval-map)
+(require drracket/tool framework racket/runtime-path data/interval-map "goal-info.rkt")
 
 (provide tool@)
 
@@ -111,12 +111,13 @@
                      (clear)
                      (define defns (get-definitions-text))
                      (for ([(k g) (in-dict gs)])
+                       (match-define (goal full summary) (goal-info-meta g))
                        (define line (send defns position-line (car k)))
                        (define col (- (car k) (send defns line-start-position line)))
                        (send hole-list-box append (number->string (add1 line)) (cons k g))
                        (define count (send hole-list-box get-number))
                        (send hole-list-box set-string (sub1 count) (number->string col) 1)
-                       (send hole-list-box set-string (sub1 count) (format "~a" (goal-info-meta g)) 2)))
+                       (send hole-list-box set-string (sub1 count) (format "~a" summary) 2)))
                    (define/public (on-new-current-goal g)
                      (if g
                          (set-selection (goal-info-index g))
@@ -153,7 +154,9 @@
                    (inherit set-value)
                    (define/public (on-new-current-goal g)
                      (if g
-                         (set-value (format "Goal ~a:\n\t~a" (goal-info-index g) (goal-info-meta g)))
+                         (set-value (format "Goal ~a:\n\t~a"
+                                            (goal-info-index g)
+                                            (goal-full (goal-info-meta g))))
                          (set-value ""))))
                  [parent p2]
                  [label #f]
