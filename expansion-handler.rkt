@@ -43,7 +43,6 @@
     (when (syntax->list stx)
       (for ([sub-stx (in-syntax stx)])
         (loop sub-stx))))
-  (displayln command-info)
   (list (build-pre-interval-map/goal goal-info)
         (build-pre-interval-map/commands command-info)))
 
@@ -65,7 +64,6 @@
 
 (define (build-pre-interval-map/commands table)
   (sort (for*/list ([(k v) (in-hash table)])
-          (displayln `(v ,v))
           (match-define (syntax-info _ pos span) k)
           (define where (cons (sub1 pos) (sub1 (+ pos span))))
           (cons where v))

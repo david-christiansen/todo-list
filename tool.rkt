@@ -44,7 +44,6 @@
 
         (define command-info (make-hasheq))
         (define (set-command-info! [commands #f])
-          (displayln commands)
           (define tab (get-tab))
           (hash-set! command-info tab
                      (if commands
@@ -94,7 +93,6 @@
           (define editing-menu
             (make-object menu% "Commands" menu))
           (send editing-menu enable #f)
-          (displayln cmds)
           (for ([c cmds])
             (match-define (list (cons start end)
                                 (command name module-path function arguments))
