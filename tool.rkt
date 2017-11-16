@@ -12,9 +12,14 @@
 
     (struct goal-info (meta index) #:transparent)
 
+    (define hole-text<%>
+      (interface (racket:text<%>)
+        [build-editing-menu (->m (is-a?/c menu-item-container<%>) exact-nonnegative-integer? (is-a?/c racket:text<%>) void?)]
+        [set-goals (->m any/c void?)]
+        [set-commands (->m any/c void?)]))
 
     (define hole-finding-text-mixin
-      (mixin (racket:text<%> drracket:unit:definitions-text<%>) ()
+      (mixin (racket:text<%> drracket:unit:definitions-text<%>) (hole-text<%>)
         (super-new)
 
         (inherit get-start-position set-position get-active-canvas scroll-to-position get-tab
@@ -37,6 +42,15 @@
                      (and info (make-interval-map info)))
           (update-hole-info!))
 
+        (define command-info (make-hasheq))
+        (define (set-command-info! [commands #f])
+          (displayln commands)
+          (define tab (get-tab))
+          (hash-set! command-info tab
+                     (if commands
+                         commands
+                         '())))
+
         (define/public (update-hole-info!)
           (define tab (get-tab))
           (define frame (send tab get-frame))
@@ -51,6 +65,9 @@
              (cons (cons start end)
                    (goal-info (cdr g) i)))))
 
+        (define/public (set-commands all-cs)
+          (set-command-info! all-cs))
+
         (define/augment (after-set-position)
           (update-pos))
 
@@ -64,7 +81,61 @@
           (define holes (hash-ref hole-info (get-tab) #f))
           (when holes
             (interval-map-contract! holes start (+ start len))
-            (update-hole-info!)))))
+            (update-hole-info!)))
+
+        (define/public (build-editing-menu menu pos text)
+          (define tab-info (hash-ref command-info (get-tab) #f))
+          (define cmds (for/list ([cmd tab-info]
+                                  #:when (let* ([region (car cmd)]
+                                                [start (car region)]
+                                                [end (cdr region)])
+                                           (<= start pos end)))
+                         cmd))
+          (define editing-menu
+            (make-object menu% "Commands" menu))
+          (send editing-menu enable #f)
+          (displayln cmds)
+          (for ([c cmds])
+            (match-define (list (cons start end)
+                                (command name module-path function arguments))
+              c)
+            (new menu-item%
+                 [label name]
+                 [parent editing-menu]
+                 [callback (lambda (item ev)
+                             (if (symbol? function)
+                                 (let ([handler (dynamic-require
+                                                 module-path function
+                                                 (thunk
+                                                  (error function
+                                                         (format "Can't require command.\nModule: ~a\nFunction: ~a"
+                                                                 module-path
+                                                                 function))))])
+                                   (define-values (keywords1 keywords2)
+                                     (procedure-keywords handler))
+                                   (define keywords (append keywords1 keywords2))
+                                   (define kw/vals
+                                     (for/list ([kw (in-list '(#:string #:definitions #:editor
+                                                               #:file))]
+                                                [kw-val (in-list
+                                                         (list (send this get-text start end)
+                                                               this
+                                                               this
+                                                               ;; TODO
+                                                               #f))]
+                                                #:when (memv kw keywords))
+                                       (cons kw kw-val)))
+                                   (define str
+                                     (keyword-apply handler
+                                                    (map car kw/vals)
+                                                    (map cdr kw/vals)
+                                                    arguments))
+                                   (when (string? str)
+                                     (send this insert str start end)))
+                                 (message-box "Bad command info"
+                                              (format "Info:\n~a" c))))]))
+          (when (not (null? cmds))
+            (send editing-menu enable #t)))))
 
     (define extra-panel-mixin
       (mixin (drracket:unit:frame<%>) ()
@@ -178,7 +249,16 @@
      expansion-handler.rkt
      'handle-expansion
      (λ (text info)
-       (send text set-goals info)))))
+       (match-define (list goals commands) info)
+       (send text set-goals goals)
+       (send text set-commands commands)))
+    (keymap:add-to-right-button-menu/before
+     (let ([old (keymap:add-to-right-button-menu/before)])
+       (λ (menu editor event)
+         (old menu editor event)
+         (define-values (pos text) (send editor get-pos/text event))
+         (when (and pos (is-a? text hole-text<%>))
+           (send editor build-editing-menu menu pos text)))))))
 
 
 

@@ -1,13 +1,19 @@
 # To-Do List for Macros
 ==========================
 
-This Racket package contains a DrRacket tool that displays a list of the unwritten parts of a program, as determined by the macros that implement those unwritten parts.
+This Racket package contains a DrRacket tool that displays a list of the unwritten parts of a program, as determined by the macros that implement those unwritten parts, as well as providing opportunities to write the unfinished parts of the program with compiler support.
 
-In particular, when Check Syntax finds a syntax object during expansion with the `'goal` syntax property, then it considers that syntax object to be an unsolved goal. After expansion, a panel pops up with a list of goals to be completed. If the syntax object additionally contains a `'goal-summary' property, then the summary is used in the list and the goal in the details view.
+In particular, when Check Syntax finds a syntax object during expansion with the `'goal` syntax property, then it considers that syntax object to be an unsolved goal. After expansion, a panel pops up with a list of goals to be completed. If the syntax object additionally contains a `'goal-summary` property, then the summary is used in the list and the goal in the details view. When it finds an object with the `'editing-command` property mapped to a description of the editing command, then the editing commands are provided in a DrRacket right-click menu.
 
-This tool is intended for use with cooperating languages, especially statically typed languages and proof assistants. It is inspired by the hole list in the [Agda](http://wiki.portal.chalmers.se/agda/pmwiki.php) mode for Emacs.
+An editing command is an instance of the following prefab struct:
+```
+(struct command (name module-path function arguments) #:prefab)
+```
+The `name` is a string to be shown to users in a menu, the `module-path` will be loaded with `dynamic-require` to find the implementation of the command, and `function` (which must be provided by the module) will be called with `arguments`. If it returns a string, then the string is used to replace the region that was clicked on. Additionally, if `function` accepts the following keyword arguments, then they will be provided as well: `#:string` contains the string of the region on which the command was placed, `#:definitions` is the definitions window, `#:editor` is the text editor object in which the command was called, and `#:file` the path to the file being edited.
 
-If you're interested in adding holes to your own language, then this tool is worth a try. To use it, run `rack pkg install -n todo-list` in the directory where it is checked out. Then, in DrRacket, open `demo.rkt` for a very simple hole macro.
+This tool is intended for use with cooperating languages, especially statically typed languages and proof assistants. It is inspired by the hole list in the [Agda](http://wiki.portal.chalmers.se/agda/pmwiki.php) mode for Emacs as well as the ability of users to add interactive commands to Lean's interactions.
+
+If you're interested in adding holes to your own language, then this tool is worth a try. To use it, run `rack pkg install -n todo-list` in the directory where it is checked out. Then, in DrRacket, open `demo.rkt` for a very simple hole macro and two editing commands.
 
 I'm interested in feedback from authors of languages with holes on what kinds of customization will make this tool more useful.
 
