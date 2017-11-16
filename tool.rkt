@@ -224,9 +224,7 @@
                    (inherit set-value)
                    (define/public (on-new-current-goal g)
                      (if g
-                         (set-value (format "Goal ~a:\n\t~a"
-                                            (goal-info-index g)
-                                            (goal-full (goal-info-meta g))))
+                         (set-value (format "~a" (goal-full (goal-info-meta g))))
                          (set-value ""))))
                  [parent p2]
                  [label #f]
