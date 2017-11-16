@@ -1,9 +1,10 @@
 #lang racket/gui
-(require drracket/tool framework racket/runtime-path data/interval-map "goal-info.rkt")
+(require drracket/tool framework racket/runtime-path data/interval-map
+         "private/goal-info.rkt")
 
 (provide tool@)
 
-(define-runtime-path expansion-handler.rkt "expansion-handler.rkt")
+(define-runtime-path expansion-handler.rkt "private/expansion-handler.rkt")
 
 (define tool@
   (unit
