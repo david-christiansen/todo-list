@@ -85,7 +85,7 @@
 
         (define/public (build-editing-menu menu pos text)
           (define tab-info (hash-ref command-info (get-tab) #f))
-          (define cmds (for/list ([cmd tab-info]
+          (define cmds (for/list ([cmd (or tab-info '())]
                                   #:when (let* ([region (car cmd)]
                                                 [start (car region)]
                                                 [end (cdr region)])
