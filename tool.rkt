@@ -163,20 +163,52 @@
           (define new-panel
             (new (class panel:vertical-dragable%
                    (super-new)
-                   (inherit change-children)
+                   (inherit add-child delete-child get-percentages set-percentages)
+                   (define goals-exist? (box #f))
                    (define/public (on-new-goal-list gs)
-                     (change-children
-                      (lambda (subareas)
-                        (append
-                         (for/list ([area (in-list subareas)]
-                                    #:when (not (eq? area hole-holder)))
-                           area)
-                         (if (dict-empty? gs)
-                             null
-                             (list hole-holder)))))))
+                     (if (dict-empty? gs)
+                         ;; show -> hide
+                         (when (unbox goals-exist?)
+                           (set-box! panel-percents (get-percentages))
+                           (set-box! goals-exist? #f)
+                           (delete-child show-hide))
+                         ;; hide -> show
+                         (unless (unbox goals-exist?)
+                           (add-child show-hide)
+                           (set-percentages (unbox panel-percents))
+                           (set-box! goals-exist? #t)))))
                  [parent super-res]))
+          (define show-hide
+            (new vertical-panel%
+                 [parent new-panel]
+                 [stretchable-height #f]
+                 [style '(deleted)]))
+          (define panel-percents (box '(99/100 1/100)))
+          (define (update-percents!)
+            (if (unbox show-goals?)
+                (send new-panel set-percentages (unbox panel-percents))
+                (begin (set-box! panel-percents (send new-panel get-percentages))
+                       (send new-panel set-percentages '(99/100 1/100)))))
+          (define (check-callback check-box evt)
+            (define show? (send check-box get-value))
+            (set-box! show-goals? show?)
+            (update-percents!)
+            (send show-hide change-children
+                  (lambda (chs)
+                    (cons show-hide-widget
+                          (if (unbox show-goals?)
+                              (list hole-holder)
+                              '())))))
+          (define show-goals? (box #t))
+          (define show-hide-widget
+            (new check-box%
+                 [parent show-hide]
+                 [label "Show goals"]
+                 [value (unbox show-goals?)]
+                 [stretchable-height #f]
+                 [callback check-callback]))
           (define hole-holder
-            (new panel:horizontal-dragable% [parent new-panel] [style '(deleted)]))
+            (new panel:horizontal-dragable% [parent show-hide]))
           (define hole-list-box
             (new (class list-box%
                    (super-new)
