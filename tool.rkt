@@ -95,44 +95,48 @@
             (make-object menu% "Commands" menu))
           (send editing-menu enable #f)
           (for ([c cmds])
-            (match-define (list (cons start end)
-                                (command name module-path function arguments))
+            (match-define (list (cons start end) found-cmds)
               c)
-            (new menu-item%
-                 [label name]
-                 [parent editing-menu]
-                 [callback (lambda (item ev)
-                             (if (symbol? function)
-                                 (let ([handler (dynamic-require
-                                                 module-path function
-                                                 (thunk
-                                                  (error function
-                                                         (format "Can't require command.\nModule: ~a\nFunction: ~a"
-                                                                 module-path
-                                                                 function))))])
-                                   (define-values (keywords1 keywords2)
-                                     (procedure-keywords handler))
-                                   (define keywords (append keywords1 keywords2))
-                                   (define kw/vals
-                                     (for/list ([kw (in-list '(#:string #:definitions #:editor
-                                                               #:file))]
-                                                [kw-val (in-list
-                                                         (list (send this get-text start end)
-                                                               this
-                                                               this
-                                                               ;; TODO
-                                                               #f))]
-                                                #:when (memv kw keywords))
-                                       (cons kw kw-val)))
-                                   (define str
-                                     (keyword-apply handler
-                                                    (map car kw/vals)
-                                                    (map cdr kw/vals)
-                                                    arguments))
-                                   (when (string? str)
-                                     (send this insert str start end)))
-                                 (message-box "Bad command info"
-                                              (format "Info:\n~a" c))))]))
+            (for ([this-c (in-list (if (or (pair? found-cmds)
+                                           (null? found-cmds))
+                                       found-cmds
+                                       (list found-cmds)))])
+              (match-define (command name module-path function arguments) this-c)
+              (new menu-item%
+                   [label name]
+                   [parent editing-menu]
+                   [callback (lambda (item ev)
+                               (if (symbol? function)
+                                   (let ([handler (dynamic-require
+                                                   module-path function
+                                                   (thunk
+                                                    (error function
+                                                           (format "Can't require command.\nModule: ~a\nFunction: ~a"
+                                                                   module-path
+                                                                   function))))])
+                                     (define-values (keywords1 keywords2)
+                                       (procedure-keywords handler))
+                                     (define keywords (append keywords1 keywords2))
+                                     (define kw/vals
+                                       (for/list ([kw (in-list '(#:string #:definitions #:editor
+                                                                 #:file))]
+                                                  [kw-val (in-list
+                                                           (list (send this get-text start end)
+                                                                 this
+                                                                 this
+                                                                 ;; TODO
+                                                                 #f))]
+                                                  #:when (memv kw keywords))
+                                         (cons kw kw-val)))
+                                     (define str
+                                       (keyword-apply handler
+                                                      (map car kw/vals)
+                                                      (map cdr kw/vals)
+                                                      arguments))
+                                     (when (string? str)
+                                       (send this insert str start end)))
+                                   (message-box "Bad command info"
+                                                (format "Info:\n~a" c))))])))
           (when (not (null? cmds))
             (send editing-menu enable #t)))))
 
