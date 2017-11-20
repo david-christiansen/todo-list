@@ -118,16 +118,19 @@
                                        (procedure-keywords handler))
                                      (define keywords (append keywords1 keywords2))
                                      (define kw/vals
-                                       (for/list ([kw (in-list '(#:string #:definitions #:editor
-                                                                 #:file))]
-                                                  [kw-val (in-list
-                                                           (list (send this get-text start end)
-                                                                 this
-                                                                 this
-                                                                 ;; TODO
-                                                                 #f))]
-                                                  #:when (memv kw keywords))
-                                         (cons kw kw-val)))
+                                       (sort
+                                        (for/list ([kw (in-list '(#:string #:definitions #:editor
+                                                                  #:file))]
+                                                   [kw-val (in-list
+                                                            (list (send this get-text start end)
+                                                                  this
+                                                                  this
+                                                                  ;; TODO
+                                                                  #f))]
+                                                   #:when (memv kw keywords))
+                                          (cons kw kw-val))
+                                        keyword<?
+                                        #:key car))
                                      (define str
                                        (keyword-apply handler
                                                       (map car kw/vals)
@@ -264,6 +267,8 @@
                          (set-value ""))))
                  [parent p2]
                  [label #f]
+                 [font (make-object font% (editor:get-current-preferred-font-size) 'modern)]
+                 [enabled #f]
                  [style '(multiple)]))
 
           (set-box! goal-list-listeners (list hole-list-box new-panel))
