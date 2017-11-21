@@ -63,6 +63,12 @@ source for the prefab structs @racket[todo-item] and @racket[command].
  placed, @racket[#:definitions] is the DrRacket definitions window, @racket[#:editor] is the
  text editor object in which the command was called, and @racket[#:file] the path to the file being
  edited.
+
+ While the values passed to @racket[#:definitions] and @racket[#:editor] presently coincide,
+ if editing commands are ever supported in the interactions window, then they may not. So use
+ @racket[#:editor] to get access to the widget in which the command is called, and
+ @racket[#:definitions] to get access to the program context regardless of where the command
+ is invoked.
 }
 
 
