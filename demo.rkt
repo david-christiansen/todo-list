@@ -30,3 +30,5 @@
 
 (with-command 444)
 
+;; No auto tests here
+(module test racket/base)
