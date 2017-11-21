@@ -1,14 +1,18 @@
-#lang racket
+#lang racket/base
 
-(provide (struct-out syntax-info)
-         syntax-loc
-         partial-syntax-loc)
+(require syntax/srcloc)
 
-(struct syntax-info (source position span)
+(provide (struct-out loc-info)
+         source-location-loc
+         partial-source-location-loc)
+
+(struct loc-info (source position span)
   #:prefab)
 
-(define (syntax-loc stx)
-  (syntax-info (syntax-source stx) (syntax-position stx) (syntax-span stx)))
+(define (source-location-loc stx)
+  (loc-info (source-location-source stx)
+            (source-location-position stx)
+            (source-location-span stx)))
 
-(define (partial-syntax-loc stx)
-  (syntax-info (syntax-source stx) (syntax-position stx) #f))
+(define (partial-source-location-loc stx)
+  (loc-info (syntax-source stx) (syntax-position stx) #f))

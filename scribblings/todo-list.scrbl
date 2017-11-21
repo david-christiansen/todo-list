@@ -3,7 +3,7 @@
 @title{Todo List for DrRacket}
 @author{David Thrane Christiansen}
 
-@require[@for-label[racket todo-list]]
+@require[@for-label[racket todo-list syntax/srcloc]]
 @declare-exporting[todo-list]
 
 Todo List is a DrRacket tool that displays a list of the unwritten parts of a program, as determined
@@ -25,12 +25,24 @@ ability of users to add custom interactive commands to Lean.
 Open @tt{demo.rkt} from the package's source for a very simple hole macro and two editing commands.
 
 The following syntax properties are recognized by the Todo List:
-@itemlist[@item{@racket['goal]: the complete goal to be shown in the Todo List, as a string}
-          @item{@racket['goal-summary]: an optional summary
-           to be shown in the list of goals in place of the complete
-           goal.}
+@itemlist[@item{@racket['goal]: the complete goal to be shown in the Todo List. A goal is either a
+           string or an instance of the @racket[todo-item] prefab struct.}
           @item{@racket['editing-command]: an editing
            command to be shown in a region, which should be an instance of @racket[command].}]
+To avoid a runtime dependency between your language and the Todo List, it is better to paste in the
+source for the prefab structs @racket[todo-item] and @racket[command].
+
+@defstruct*[todo-item ([location source-location?]
+                       [full string?]
+                       [summary (or/c #f string?)]) #:prefab]{
+ A @racket[todo-item] represents a goal to be shown in the todo list. The goal is presented at
+ @racket[loc], unless @racket[location] is @racket[#f], in which case the syntax object to which the
+ goal is attached is used for its source location. The contents of @racket[full] are used as the
+ contents of the goal details, and if @racket[summary] is @racket[#f], then @racket[full] is also
+ used as the summary for the Todo List. If @racket[summary] is a string, then it is used as the
+ summary. Only one goal is permitted for a region: if the @racket[location] fields cause multiple
+ goals to overlap, then one will replace the other in an unspecified order.
+}
 
 @defstruct*[command ([name string?]
                      [module-path  	
