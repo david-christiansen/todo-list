@@ -212,6 +212,10 @@
                  [callback check-callback]))
           (define hole-holder
             (new panel:horizontal-dragable% [parent show-hide]))
+          (define (truncate-summary str)
+            (if (> (string-length str) 200)
+                (string-append (substring str 0 196) "...")
+                str))
           (define hole-list-box
             (new (class list-box%
                    (super-new)
@@ -226,7 +230,9 @@
                        (send hole-list-box append (number->string (add1 line)) (cons k g))
                        (define count (send hole-list-box get-number))
                        (send hole-list-box set-string (sub1 count) (number->string col) 1)
-                       (send hole-list-box set-string (sub1 count) (format "~a" summary) 2)))
+                       (send hole-list-box set-string
+                             (sub1 count)
+                             (truncate-summary (format "~a" summary)) 2)))
                    (define/public (on-new-current-goal g)
                      (if g
                          (set-selection (goal-info-index g))
