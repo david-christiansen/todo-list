@@ -11,32 +11,14 @@
   (define goal-info (make-hash))
   (define command-info (make-hash))
   (let loop ([stx stx])
-    (define goal-prop (syntax-property stx 'goal))
-    (define full-goal
-      (cond
-        [(string? goal-prop) goal-prop]
-        [(todo-item? goal-prop) (todo-item-full goal-prop)]
-        [else #f]))
+    ;; this-goal    : [Maybe [Located Goal]]
+    ;; this-command : [Maybe [Located Command]]
+    (define this-goal (detect-goal stx))
+    (define this-command (detect-command stx))
 
-    ;; The summary is optional, and defaults to the main goal
-    (define summary
-      (match goal-prop
-        [(todo-item _ _ summary) #:when (string? summary) summary]
-        [else full-goal]))
-
-    (define goal-loc
-      (match goal-prop
-        [(todo-item loc _ _)
-         #:when (and loc (source-location? loc))
-         loc]
-        [else stx]))
-
-    ;; Detect commands
-    (define this-command (syntax-property stx 'editing-command))
-
-    (when (and full-goal (equal? source (source-location-source goal-loc)))
+    (when (and this-goal (equal? source (located-source this-goal)))
       (hash-update! goal-info
-                    (source-location-loc goal-loc)
+                    (source-location-loc (located-location this-goal))
                     (λ (old)
                       ;; If we encounter precisely the same source
                       ;; span, then ditch the goals if they're not the
@@ -44,18 +26,20 @@
                       (cond
                         [old
                          (match-define (goal old-goal old-summary) old)
-                         (goal (and (equal? old-goal full-goal) old-goal)
+                         (match-define (goal new-goal summary)
+                           (located-value this-goal))
+                         (goal (and (equal? old-goal new-goal) old-goal)
                                (and (equal? old-summary summary) old-summary))]
-                        [else (goal full-goal summary)]))
+                        [else (located-value this-goal)]))
                     #f))
 
-    (when (and this-command (equal? source (syntax-source stx)))
+    (when (and this-command (equal? source (located-source this-command)))
       (hash-update! command-info
-                    (source-location-loc stx)
+                    (source-location-loc (located-location this-command))
                     (λ (old)
-                      (cond [(not old) (list this-command)]
-                            [(member this-command old) old]
-                            [else (cons this-command old)]))
+                      (cond [(not old) (list (located-value this-command))]
+                            [(member (located-value this-command) old) old]
+                            [else (cons (located-value this-command) old)]))
                     #f))
     (when (syntax->list stx)
       (for ([sub-stx (in-syntax stx)])
@@ -94,3 +78,46 @@
 (define (handle-expansion stx path source cust)
   (and (syntax? stx)
        (build-goal-info stx source)))
+
+
+;; ------------------------------------------------------------------------
+
+;; detect-goal : Syntax -> [Maybe [Located Goal]]
+;; The goal for a syntax object is either:
+;;  - the 'goal syntax property, if it is already a goal structure or
+;;    located goal structure
+;;  - the 'goal property combined with the 'goal-summary property
+(define (detect-goal stx)
+  (define full-goal (syntax-property stx 'goal))
+  (cond
+    [(false? full-goal) #false]
+    [(goal? full-goal) (located stx full-goal)]
+    [(located? full-goal)
+     (if (goal? (located-value full-goal))
+         full-goal
+         #false)]
+    [else
+     ;; The summary is optional
+     (define summary (or (syntax-property stx 'goal-summary) full-goal))
+     ;; The goal structure includes stx for the source location
+     (located stx (goal full-goal summary))]))
+
+;; detect-command : Syntax -> [Maybe [Located Command]]
+;; The command for a syntax object is in the 'editing-command syntax
+;; property.
+(define (detect-command stx)
+  (define this-command (syntax-property stx 'editing-command))
+  (cond
+    [(false? this-command) #false]
+    [(command? this-command) (located stx this-command)]
+    [(located? this-command)
+     (if (command? (located-value this-command))
+         this-command
+         #false)]
+    [else #false]))
+
+
+;; located-source : [Located X] -> Any
+(define (located-source lctd)
+  (source-location-source (located-location lctd)))
+

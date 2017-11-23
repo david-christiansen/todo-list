@@ -31,7 +31,8 @@
 ;; This example uses a syntax parameter to propagate the surrounding expression
 ;; context, attaching the todo-item to the context if one exists.
 (begin-for-syntax
-  (struct todo-item (loc full summary) #:prefab))
+  (struct located (loc value) #:prefab)
+  (struct goal (full summary) #:prefab))
 
 (require racket/stxparam racket/splicing)
 
@@ -49,7 +50,7 @@
   (define ctx (or (syntax-parameter-value #'definition-context) stx))
   (syntax-parse stx
     [(_ msg:string)
-     (define item (todo-item ctx (syntax->datum #'msg) #f))
+     (define item (located ctx (goal (syntax->datum #'msg) #f)))
      (syntax-property (syntax/loc stx (error 'inner-todo msg)) 'goal item)]))
 
 ;; The entire definition containing the TODO is highlighted as a goal now.
