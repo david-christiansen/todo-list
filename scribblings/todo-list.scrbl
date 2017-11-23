@@ -26,22 +26,21 @@ Open @tt{demo.rkt} from the package's source for a very simple hole macro and tw
 
 The following syntax properties are recognized by the Todo List:
 @itemlist[@item{@racket['goal]: the complete goal to be shown in the Todo List. A goal is either a
-           string or an instance of the @racket[todo-item] prefab struct.}
+           string, an instance of the @racket[goal] prefab struct, or an instance of
+           @racket[located] with a @racket[goal] inside.}
           @item{@racket['editing-command]: an editing
-           command to be shown in a region, which should be an instance of @racket[command].}]
+           command to be shown in a region. A command is either an instance of @racket[command]
+           or an instance of @racket[located] with a @racket[command] inside.}]
 To avoid a runtime dependency between your language and the Todo List, it is better to paste in the
-source for the prefab structs @racket[todo-item] and @racket[command].
+source for the prefab structs @racket[goal], @racket[command], and @racket[located].
 
-@defstruct*[todo-item ([location source-location?]
-                       [full string?]
-                       [summary (or/c #f string?)]) #:prefab]{
- A @racket[todo-item] represents a goal to be shown in the todo list. The goal is presented at
- @racket[loc], unless @racket[location] is @racket[#f], in which case the syntax object to which the
- goal is attached is used for its source location. The contents of @racket[full] are used as the
+@defstruct*[goal ([full string?]
+                  [summary (or/c #f string?)]) #:prefab]{
+ A @racket[goal] represents a goal to be shown in the todo list.
+ The contents of @racket[full] are used as the
  contents of the goal details, and if @racket[summary] is @racket[#f], then @racket[full] is also
  used as the summary for the Todo List. If @racket[summary] is a string, then it is used as the
- summary. Only one goal is permitted for a region: if the @racket[location] fields cause multiple
- goals to overlap, then one will replace the other in an unspecified order.
+ summary.
 }
 
 @defstruct*[command ([name string?]
@@ -71,4 +70,14 @@ source for the prefab structs @racket[todo-item] and @racket[command].
  is invoked.
 }
 
+@defstruct*[located ([location source-location?]
+                     [value any/c])
+            #:prefab]{
+ A goal or command can be put inside a @racket[located] struct. The @racket[location] field
+ contains the region to associate it with, and the @racket[value] field contains the goal or
+ command.
+
+ Only one goal is permitted for a region: if the @racket[location] fields cause multiple
+ goals to overlap, then one will replace the other in an unspecified order.
+}
 
