@@ -95,7 +95,7 @@
             (make-object menu% "Commands" menu))
           (send editing-menu enable #f)
           (for ([c cmds])
-            (match-define (list (cons start end) found-cmds)
+            (match-define (cons (cons start end) found-cmds)
               c)
             (for ([this-c (in-list (if (or (pair? found-cmds)
                                            (null? found-cmds))

@@ -39,9 +39,9 @@
       (hash-update! command-info
                     (source-location-loc (located-location this-command))
                     (λ (old)
-                      (cond [(not old) (list (located-value this-command))]
+                      (cond [(false? old) (list (located-value this-command))]
                             [(member (located-value this-command) old) old]
-                            [else (cons (located-value this-command) old)]))
+                            [else (append old (list (located-value this-command)))]))
                     #f))
     (when (syntax->list stx)
       (for ([sub-stx (in-syntax stx)])
