@@ -3,7 +3,7 @@ To-Do List for Macros
 
 This Racket package contains a DrRacket tool that displays a list of the unwritten parts of a program, as determined by the macros that implement those unwritten parts, as well as providing opportunities to write the unfinished parts of the program with compiler support.
 
-In particular, when Check Syntax finds a syntax object during expansion with the `'todo` syntax property, then it considers that syntax object to be an incomplete program. After expansion, a panel pops up with a list of taskss to be completed. When it finds an object with the `'editing-command` property mapped to a description of the editing command, then the editing commands are provided in a DrRacket right-click menu.
+In particular, when Check Syntax finds a syntax object during expansion with the `'todo` syntax property, then it considers that syntax object to be an incomplete program. After expansion, a panel pops up with a list of tasks to be completed. When it finds an object with the `'editing-command` property mapped to a description of the editing command, then the editing commands are provided in a DrRacket right-click menu.
 
 An editing command is an instance of the following prefab struct:
 ```
@@ -15,7 +15,7 @@ More control over both the contents of TODO items and placement of both TODO lis
 
 This tool is intended for use with cooperating languages, especially statically typed languages and proof assistants. It is inspired by the hole list in the [Agda](http://wiki.portal.chalmers.se/agda/pmwiki.php) mode for Emacs as well as the ability of users to add interactive commands to Lean's interactions.
 
-If you're interested in adding holes to your own language, then this tool is worth a try. To use it, run `rack pkg install -n todo-list` in the directory where it is checked out. Then, in DrRacket, open `demo.rkt` for a very simple hole macro and two editing commands.
+If you're interested in adding holes to your own language, then this tool is worth a try. To use it, run `rack pkg install -n todo-list` in the directory where it is checked out. Then, in DrRacket, open `demo.rkt` for a demonstration of editing commands and incomplete programs.
 
 I'm interested in feedback from authors of languages with holes on what kinds of customization will make this tool more useful.
 
