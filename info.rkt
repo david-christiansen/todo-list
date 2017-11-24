@@ -1,7 +1,7 @@
 #lang info
 
 (define collection "todo-list")
-(define version "0.4")
+(define version "0.5")
 (define pkg-desc "An interactive todo list for DrRacket")
 
 (define drracket-name "Todo List")
