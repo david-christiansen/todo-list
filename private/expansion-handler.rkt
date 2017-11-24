@@ -1,39 +1,41 @@
 #lang racket
 
-(provide build-goal-info handle-expansion)
+(provide build-todo-info handle-expansion)
 
 (require syntax/parse syntax/srcloc
          "syntax-info.rkt" "goal-info.rkt")
 
 ;; traverse fully expanded syntax and produce a list suitable for building
-;; an interval-map. This maps intervals of goals to their metadata.
-(define (build-goal-info stx source)
-  (define goal-info (make-hash))
+;; an interval-map. This maps intervals of todos to their metadata.
+(define (build-todo-info stx source)
+  (define todo-info (make-hash))
   (define command-info (make-hash))
   (let loop ([stx stx])
-    ;; this-goal    : [Maybe [Located Goal]]
-    ;; this-command : [Maybe [Located Command]]
-    (define this-goal (detect-goal stx))
-    (define this-command (detect-command stx))
+    ;; this-todo is either #f or a located todo
+    (define these-todos (detect-todos stx))
+    ;; this-command is a list of located commands
+    (define these-commands (detect-commands stx))
 
-    (when (and this-goal (equal? source (located-source this-goal)))
-      (hash-update! goal-info
-                    (source-location-loc (located-location this-goal))
-                    (λ (old)
-                      ;; If we encounter precisely the same source
-                      ;; span, then ditch the goals if they're not the
-                      ;; same.
-                      (cond
-                        [old
-                         (match-define (goal old-goal old-summary) old)
-                         (match-define (goal new-goal summary)
-                           (located-value this-goal))
-                         (goal (and (equal? old-goal new-goal) old-goal)
-                               (and (equal? old-summary summary) old-summary))]
-                        [else (located-value this-goal)]))
-                    #f))
+    (for ([this-todo (in-list these-todos)])
+      (when (equal? source (located-source this-todo))
+        (hash-update! todo-info
+                      (source-location-loc (located-location this-todo))
+                      (λ (old)
+                        ;; If we encounter precisely the same source
+                        ;; span, then ditch the todos if they're not the
+                        ;; same.
+                        (cond
+                          [old
+                           (match-define (todo-item old-todo old-summary) old)
+                           (match-define (todo-item new-todo summary)
+                             (located-value this-todo))
+                           (todo-item (and (equal? old-todo new-todo) old-todo)
+                                      (and (equal? old-summary summary) old-summary))]
+                          [else (located-value this-todo)]))
+                      #f)))
 
-    (when (and this-command (equal? source (located-source this-command)))
+    (for ([this-command (in-list these-commands)]
+          #:when (equal? source (located-source this-command)))
       (hash-update! command-info
                     (source-location-loc (located-location this-command))
                     (λ (old)
@@ -44,15 +46,15 @@
     (when (syntax->list stx)
       (for ([sub-stx (in-syntax stx)])
         (loop sub-stx))))
-  (list (build-pre-interval-map/goal goal-info)
+  (list (build-pre-interval-map/todo todo-info)
         (build-pre-interval-map/commands command-info)))
 
 ;; Construct a list that is suitable input to make-interval-map
-(define (build-pre-interval-map/goal table)
+(define (build-pre-interval-map/todo table)
   (sort (for*/list ([(k v) (in-hash table)]
-                    [full (in-value (goal-full v))]
+                    [full (in-value (todo-item-full v))]
                     #:when full
-                    [summary (in-value (goal-summary v))])
+                    [summary (in-value (todo-item-summary v))])
           (match-define (loc-info _ pos span) k)
           (cons (cons (sub1 pos) (sub1 (+ pos span)))
                 v))
@@ -77,47 +79,72 @@
 
 (define (handle-expansion stx path source cust)
   (and (syntax? stx)
-       (build-goal-info stx source)))
+       (build-todo-info stx source)))
 
 
 ;; ------------------------------------------------------------------------
 
-;; detect-goal : Syntax -> [Maybe [Located Goal]]
-;; The goal for a syntax object is either:
-;;  - the 'goal syntax property, if it is already a goal structure or
-;;    located goal structure
-;;  - the 'goal property combined with the 'goal-summary property
-(define (detect-goal stx)
-  (define full-goal (syntax-property stx 'goal))
-  (cond
-    [(false? full-goal) #false]
-    [(goal? full-goal) (located stx full-goal)]
-    [(located? full-goal)
-     (if (goal? (located-value full-goal))
-         full-goal
-         #false)]
-    [else
-     ;; The summary is optional
-     (define summary (or (syntax-property stx 'goal-summary) full-goal))
-     ;; The goal structure includes stx for the source location
-     (located stx (goal full-goal summary))]))
 
-;; detect-command : Syntax -> [Maybe [Located Command]]
-;; The command for a syntax object is in the 'editing-command syntax
+;; flatten* : (-> (-> Any Boolean) Any (Listof Any))
+;; Flatten and filter a cons tree of values into a list of values accepted by ok?
+(define (flatten* ok? v)
+  (cond
+    [(ok? v) (list v)]
+    [(pair? v) (append (flatten* ok? (car v)) (flatten* ok? (cdr v)))]
+    [else '()]))
+
+;; add-location : (∀ (A) (-> Loc (-> A (Located A))))
+;; Add a location to an object if it doesn't already have one.
+(define ((add-location loc) v)
+  (if (located? v) v (located loc v)))
+
+(define (todoify v)
+  (cond
+    [(todo-item? v) v]
+    [(string? v) (todo-item v v)]
+    [else (error 'todoify "Bad todo: ~v" v)]))
+
+;; map-location : (∀ (A B) (-> (-> A B) (Located A) (Located B)))
+;; Locations are functorial
+(define (map-location f loc)
+  (match loc
+    [(located where what) (located where (f what))]))
+
+;; perhaps-located? : (-> (-> Any Boolean) (-> Any Boolean))
+;; Check whether a value satisfies a predicate or is a located value
+;; satsifying the predicate.
+(define ((perhaps-located? ok?) x)
+  (or (ok? x) (and (located? x) (ok? (located-value x)))))
+
+
+;; detect-todos : (-> Syntax (Listof (Located Todo)))
+;; The todo for a syntax object is in the 'todo syntax property. It consists of a
+;; cons tree of strings or todo-item structures, possibly located.
+(define (detect-todos stx)
+  (define todos (syntax-property stx 'todo))
+  (if (false? todos)
+      '()
+      (for/list ([todo (in-list (flatten* (perhaps-located?
+                                           (lambda (x)
+                                             (or (string? x)
+                                                 (todo-item? x))))
+                                          todos))])
+        (map-location todoify ((add-location stx) todo)))))
+
+
+;; detect-command : (-> Syntax (Listof (Located Command)))
+;; The command or commands for a syntax object are in the 'editing-command syntax
 ;; property.
-(define (detect-command stx)
-  (define this-command (syntax-property stx 'editing-command))
-  (cond
-    [(false? this-command) #false]
-    [(command? this-command) (located stx this-command)]
-    [(located? this-command)
-     (if (command? (located-value this-command))
-         this-command
-         #false)]
-    [else #false]))
+(define (detect-commands stx)
+  (define these-commands (syntax-property stx 'editing-command))
+  (if (false? these-commands)
+      '()
+      (map (add-location stx)
+           (flatten* (perhaps-located? command?)
+                     these-commands))))
 
 
-;; located-source : [Located X] -> Any
+;; located-source : (-> (Located X) Any)
 (define (located-source lctd)
   (source-location-source (located-location lctd)))
 

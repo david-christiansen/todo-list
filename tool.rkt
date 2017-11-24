@@ -11,12 +11,12 @@
     (import drracket:tool^)
     (export drracket:tool-exports^)
 
-    (struct goal-info (meta index) #:transparent)
+    (struct todo-info (meta index) #:transparent)
 
     (define hole-text<%>
       (interface (racket:text<%>)
         [build-editing-menu (->m (is-a?/c menu-item-container<%>) exact-nonnegative-integer? (is-a?/c racket:text<%>) void?)]
-        [set-goals (->m any/c void?)]
+        [set-todos (->m any/c void?)]
         [set-commands (->m any/c void?)]))
 
     (define hole-finding-text-mixin
@@ -32,9 +32,9 @@
           (match (and hole-info
                       tab-info
                       (interval-map-ref tab-info pos #f))
-            [#f (send (send (get-tab) get-frame) set-current-goal #f)]
-            [(and g (goal-info _ i))
-             (send (send (get-tab) get-frame) set-current-goal g)]))
+            [#f (send (send (get-tab) get-frame) set-current-todo #f)]
+            [(and g (todo-info _ i))
+             (send (send (get-tab) get-frame) set-current-todo g)]))
 
         (define hole-info (make-hasheq))
         (define (set-hole-info! [info #f])
@@ -55,15 +55,15 @@
           (define tab (get-tab))
           (define frame (send tab get-frame))
           (let ([info (hash-ref hole-info tab #f)])
-            (send frame set-goal-list (if info info (make-interval-map)))))
+            (send frame set-todo-list (if info info (make-interval-map)))))
 
-        (define/public (set-goals gs)
+        (define/public (set-todos gs)
           (set-hole-info!
            (for/list ([g gs]
                       [i (in-range 10000)])
-             (match-define `((,start . ,end) . ,goal) g)
+             (match-define `((,start . ,end) . ,todo) g)
              (cons (cons start end)
-                   (goal-info (cdr g) i)))))
+                   (todo-info (cdr g) i)))))
 
         (define/public (set-commands all-cs)
           (set-command-info! all-cs))
@@ -151,15 +151,15 @@
         (define/augment (on-tab-change from to)
           (send (get-definitions-text) update-hole-info!))
 
-        (define goal-list-listeners (box null))
-        (define/public (set-goal-list gs)
-          (for ([l (unbox goal-list-listeners)])
-            (send l on-new-goal-list gs)))
+        (define todo-list-listeners (box null))
+        (define/public (set-todo-list gs)
+          (for ([l (unbox todo-list-listeners)])
+            (send l on-new-todo-list gs)))
 
-        (define current-goal-listeners (box null))
-        (define/public (set-current-goal g)
-          (for ([l (unbox current-goal-listeners)])
-            (send l on-new-current-goal g)))
+        (define current-todo-listeners (box null))
+        (define/public (set-current-todo g)
+          (for ([l (unbox current-todo-listeners)])
+            (send l on-new-current-todo g)))
 
         (define/override (get-definitions/interactions-panel-parent)
           (define super-res (super get-definitions/interactions-panel-parent))
@@ -167,19 +167,19 @@
             (new (class panel:vertical-dragable%
                    (super-new)
                    (inherit add-child delete-child get-percentages set-percentages)
-                   (define goals-exist? (box #f))
-                   (define/public (on-new-goal-list gs)
+                   (define todos-exist? (box #f))
+                   (define/public (on-new-todo-list gs)
                      (if (dict-empty? gs)
                          ;; show -> hide
-                         (when (unbox goals-exist?)
+                         (when (unbox todos-exist?)
                            (set-box! panel-percents (get-percentages))
-                           (set-box! goals-exist? #f)
+                           (set-box! todos-exist? #f)
                            (delete-child show-hide))
                          ;; hide -> show
-                         (unless (unbox goals-exist?)
+                         (unless (unbox todos-exist?)
                            (add-child show-hide)
                            (set-percentages (unbox panel-percents))
-                           (set-box! goals-exist? #t)))))
+                           (set-box! todos-exist? #t)))))
                  [parent super-res]))
           (define show-hide
             (new vertical-panel%
@@ -188,26 +188,26 @@
                  [style '(deleted)]))
           (define panel-percents (box '(99/100 1/100)))
           (define (update-percents!)
-            (if (unbox show-goals?)
+            (if (unbox show-todos?)
                 (send new-panel set-percentages (unbox panel-percents))
                 (begin (set-box! panel-percents (send new-panel get-percentages))
                        (send new-panel set-percentages '(99/100 1/100)))))
           (define (check-callback check-box evt)
             (define show? (send check-box get-value))
-            (set-box! show-goals? show?)
+            (set-box! show-todos? show?)
             (update-percents!)
             (send show-hide change-children
                   (lambda (chs)
                     (cons show-hide-widget
-                          (if (unbox show-goals?)
+                          (if (unbox show-todos?)
                               (list hole-holder)
                               '())))))
-          (define show-goals? (box #t))
+          (define show-todos? (box #t))
           (define show-hide-widget
             (new check-box%
                  [parent show-hide]
-                 [label "Show goals"]
-                 [value (unbox show-goals?)]
+                 [label "Show TODOs"]
+                 [value (unbox show-todos?)]
                  [stretchable-height #f]
                  [callback check-callback]))
           (define hole-holder
@@ -220,11 +220,11 @@
             (new (class list-box%
                    (super-new)
                    (inherit append clear get-selection select set-selection)
-                   (define/public (on-new-goal-list gs)
+                   (define/public (on-new-todo-list gs)
                      (clear)
                      (define defns (get-definitions-text))
                      (for ([(k g) (in-dict gs)])
-                       (match-define (goal full summary) (goal-info-meta g))
+                       (match-define (todo-item full summary) (todo-info-meta g))
                        (define line (send defns position-line (car k)))
                        (define col (- (car k) (send defns line-start-position line)))
                        (send hole-list-box append (number->string (add1 line)) (cons k g))
@@ -233,15 +233,15 @@
                        (send hole-list-box set-string
                              (sub1 count)
                              (truncate-summary (format "~a" summary)) 2)))
-                   (define/public (on-new-current-goal g)
+                   (define/public (on-new-current-todo g)
                      (if g
-                         (set-selection (goal-info-index g))
+                         (set-selection (todo-info-index g))
                          (let ([sel (get-selection)])
                            (when sel (select sel #f))))))
                  [parent hole-holder]
                  [label #f]
                  [choices (list)]
-                 [columns '("Line" "Col" "Goal")]
+                 [columns '("Line" "Col" "Summary")]
                  [style '(single column-headers)]
                  [callback (lambda (list-box evt)
                              (when (eqv? (send evt get-event-type) 'list-box)
@@ -249,7 +249,7 @@
                                  [(list) (void)]
                                  [(list n)
                                   (match-define (cons (cons start end)
-                                                      (goal-info meta _))
+                                                      (todo-info meta _))
                                     (send list-box get-data n))
                                   (define defns (get-definitions-text))
                                   (queue-callback (thunk (send* defns
@@ -267,9 +267,9 @@
             (new (class text-field%
                    (super-new)
                    (inherit set-value)
-                   (define/public (on-new-current-goal g)
+                   (define/public (on-new-current-todo g)
                      (if g
-                         (set-value (format "~a" (goal-full (goal-info-meta g))))
+                         (set-value (format "~a" (todo-item-full (todo-info-meta g))))
                          (set-value ""))))
                  [parent p2]
                  [label #f]
@@ -277,8 +277,8 @@
                  [enabled #f]
                  [style '(multiple)]))
 
-          (set-box! goal-list-listeners (list hole-list-box new-panel))
-          (set-box! current-goal-listeners (list hole-list-box details))
+          (set-box! todo-list-listeners (list hole-list-box new-panel))
+          (set-box! current-todo-listeners (list hole-list-box details))
 
           new-panel)
 
@@ -293,8 +293,8 @@
      expansion-handler.rkt
      'handle-expansion
      (λ (text info)
-       (match-define (list goals commands) info)
-       (send text set-goals goals)
+       (match-define (list todos commands) info)
+       (send text set-todos todos)
        (send text set-commands commands)))
     (keymap:add-to-right-button-menu/before
      (let ([old (keymap:add-to-right-button-menu/before)])
