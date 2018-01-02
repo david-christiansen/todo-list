@@ -4,11 +4,16 @@
 @author{David Thrane Christiansen}
 
 @require[@for-label[racket todo-list syntax/srcloc]]
+@require[racket/runtime-path]
 @declare-exporting[todo-list]
 
 Todo List is a DrRacket tool that displays a list of the unwritten parts of a program, as determined
 by the macros that implement those unwritten parts, as well as providing opportunities to write the
 unfinished parts of the program with compiler support.
+
+@define-runtime-path[demo.png "../demo.png"]
+@image[demo.png #:scale 0.45]{Screenshot of the Todo List}
+
 
 In particular, when Check Syntax finds a syntax object during expansion with the @racket['todo] syntax
 property, then it considers that syntax object to be a task to be completed. After expansion, a panel pops
