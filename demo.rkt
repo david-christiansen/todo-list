@@ -50,7 +50,7 @@
 (define-syntax (inner-TODO stx)
   (define ctx (or (syntax-parameter-value #'definition-context) stx))
   (syntax-parse stx
-    [(_ msg:string)
+    [(_ msg:str)
      (define item
        (located ctx
                 (todo-item (syntax->datum #'msg)
