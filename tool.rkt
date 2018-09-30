@@ -268,14 +268,16 @@
                    (super-new)
                    (inherit set-value)
                    (define/public (on-new-current-todo g)
-                     (if g
-                         (set-value (format "~a" (todo-item-full (todo-info-meta g))))
-                         (set-value ""))))
+                     (send detail-editor lock #f)
+                     (set-value (if g (format "~a" (todo-item-full (todo-info-meta g))) ""))
+                     (send detail-editor lock #t)))
                  [parent p2]
                  [label #f]
                  [font (make-object font% (editor:get-current-preferred-font-size) 'modern)]
-                 [enabled #f]
                  [style '(multiple)]))
+
+          (define detail-editor (send details get-editor))
+          (send detail-editor lock #t)
 
           (set-box! todo-list-listeners (list hole-list-box new-panel))
           (set-box! current-todo-listeners (list hole-list-box details))
