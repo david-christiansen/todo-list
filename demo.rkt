@@ -1,5 +1,5 @@
 #lang racket
-(require (for-syntax syntax/parse))
+(require (for-syntax syntax/parse racket/port))
 
 (begin-for-syntax
   ;; Editing commands are represented as prefab structs.
@@ -75,6 +75,27 @@
                       (command "Double" "test-command.rkt" 'double '()))]))
 
 (with-command 444)
+
+(define-syntax (TODO/bindings stx)
+  (syntax-case stx ()
+    [(_ e ...)
+     ;; syntax-debug-info returns information about macro expansion contexts.
+     ;; It will often let you get local variables in #lang racket! See the docs
+     ;; for more information about syntax-debug-info.
+     (let* ((info (syntax-debug-info stx (syntax-local-phase-level) #t))
+            (bindings (hash-ref info 'bindings '())))
+       (let ((details (with-output-to-string
+                        (lambda ()
+                          (printf "Local vars:\n")
+                          (for ([b bindings])
+                            (let ((name (hash-ref b 'name #f))
+                                  (local? (hash-ref b 'local #f)))
+                              (when (and name local?)
+                                (printf " ~a\n" name))))))))
+         (syntax-property #'(error 'TODO/bindings)
+                          'todo (todo-item details "TODO with bindings"))))]))
+
+(let ((x 1) (y 2)) (TODO/bindings))
 
 ;; No auto tests here
 (module test racket/base)
