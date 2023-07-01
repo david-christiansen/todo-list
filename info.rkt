@@ -14,6 +14,6 @@
                "gui-lib"))
 (define build-deps '("scribble-lib" "racket-doc"))
 
-(define scribblings '(("scribblings/todo-list.scrbl" ())))
+(define scribblings '(("scribblings/todo-list.scrbl" () ("DrRacket Plugin"))))
 
 (define test-omit-paths '("demo.rkt"))
